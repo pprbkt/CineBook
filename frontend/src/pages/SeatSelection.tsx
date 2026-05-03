@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { Sparkles, Eye, RotateCcw, Maximize2 } from 'lucide-react';
 import { showtimesAPI, bookingsAPI } from '../lib/api';
@@ -14,20 +14,35 @@ import toast from 'react-hot-toast';
 /* ---- Animated Camera ---- */
 function AnimatedCamera({ target, lookAt, fov = 60, controlsRef }: { target: [number,number,number]; lookAt: [number,number,number]; fov?: number; controlsRef: any }) {
   const { camera } = useThree();
-  const posRef = useRef(new THREE.Vector3(...target));
-  const lookRef = useRef(new THREE.Vector3(...lookAt));
-  useEffect(() => { posRef.current.set(...target); lookRef.current.set(...lookAt); }, [target, lookAt]);
+  const [animating, setAnimating] = useState(false);
+  const targetVec = useRef(new THREE.Vector3());
+  const lookAtVec = useRef(new THREE.Vector3());
+
+  useEffect(() => { 
+    targetVec.current.set(...target);
+    lookAtVec.current.set(...lookAt);
+    setAnimating(true);
+  }, [target, lookAt]);
+
   useFrame(() => {
-    // Only animate if far from target so user can still manually drag around once arrived
-    if (camera.position.distanceTo(posRef.current) > 0.05) {
-      camera.position.lerp(posRef.current, 0.04);
-      (camera as THREE.PerspectiveCamera).fov = THREE.MathUtils.lerp((camera as THREE.PerspectiveCamera).fov, fov, 0.04);
-      (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+    if (!animating) return;
+
+    const posDist = camera.position.distanceTo(targetVec.current);
+    const lookDist = controlsRef.current ? controlsRef.current.target.distanceTo(lookAtVec.current) : 0;
+
+    if (posDist < 0.05 && lookDist < 0.05) {
+      setAnimating(false);
+      return;
     }
-    if (controlsRef.current && controlsRef.current.target.distanceTo(lookRef.current) > 0.05) {
-      controlsRef.current.target.lerp(lookRef.current, 0.04);
+
+    camera.position.lerp(targetVec.current, 0.06);
+    if (controlsRef.current) {
+      controlsRef.current.target.lerp(lookAtVec.current, 0.06);
       controlsRef.current.update();
     }
+    const pc = camera as THREE.PerspectiveCamera;
+    pc.fov = THREE.MathUtils.lerp(pc.fov, fov, 0.06);
+    pc.updateProjectionMatrix();
   });
   return null;
 }
@@ -48,21 +63,14 @@ function Seat3D({ position, color, emissive, selected, onClick, booked }: any) {
     <group ref={ref} position={position} rotation={[0, Math.PI, 0]} onClick={onClick}
       onPointerOver={() => { if (!booked) { setHovered(true); document.body.style.cursor = 'pointer'; } }}
       onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default'; }}>
-      {/* Backrest - slightly curved using cylinder slice */}
-      <mesh position={[0, 0.52, -0.16]} castShadow>
-        <boxGeometry args={[0.68, 0.72, 0.1]} />
+      {/* Backrest - gently curved */}
+      <RoundedBox args={[0.66, 0.76, 0.12]} radius={0.04} smoothness={4} position={[0, 0.54, -0.16]} castShadow>
         <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={ei} {...velvet} />
-      </mesh>
-      {/* Backrest top padding (rounded) */}
-      <mesh position={[0, 0.9, -0.16]} castShadow>
-        <cylinderGeometry args={[0.34, 0.34, 0.1, 16, 1, false, 0, Math.PI]} />
-        <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={ei} {...velvet} />
-      </mesh>
+      </RoundedBox>
       {/* Seat cushion (thicker, slightly angled) */}
-      <mesh position={[0, 0.14, 0.06]} rotation={[0.05, 0, 0]} castShadow>
-        <boxGeometry args={[0.68, 0.14, 0.4]} />
+      <RoundedBox args={[0.66, 0.14, 0.44]} radius={0.03} smoothness={4} position={[0, 0.14, 0.08]} rotation={[0.05, 0, 0]} castShadow>
         <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={ei * 0.7} {...velvet} />
-      </mesh>
+      </RoundedBox>
       {/* Left armrest */}
       <group position={[-0.4, 0, 0]}>
         <mesh position={[0, 0.32, -0.04]}>
@@ -129,23 +137,38 @@ function CinemaScene({ seatLayout, bookedSeats, selectedSeats, lockedSeats, user
     return { color: '#cc2222', emissive: '#881111' };
   };
 
-  // Camera positions — screen is at far end (large Z), seats at small Z
-  const totalDepth = numRows * rowSpacing + 2;
-  const overviewPos: [number,number,number] = [0, numRows * 1.2 + 8, -4];
-  const overviewLook: [number,number,number] = [0, 0, totalDepth * 0.5];
-  let camPos = overviewPos, camLook = overviewLook, camFov = 55;
+  // Screen is at Z=0. Seats start at Z=7 and go positive (+Z). 
+  // Row A (front) is at Z=7 (lowest Y). Row J (back) is at Z=20 (highest Y).
+  const screenZ = 0;
+  const startZ = 7;
+  const totalDepth = startZ + numRows * rowSpacing;
+
+  const roomZCenter = totalDepth / 2;
+  const roomDepth = totalDepth + 12;
+
+  // Overview camera looks from behind the seats toward the screen
+  const overviewPos: [number,number,number] = [0, numRows * 1.5 + 4, totalDepth + 8];
+  const overviewLook: [number,number,number] = [0, 4, screenZ];
+  let camPos = overviewPos, camLook = overviewLook, camFov = 65;
 
   if (viewMode === 'pov' && selectedSeatObj) {
     const ri = rowLetters.indexOf(selectedSeatObj.row);
     const x = (selectedSeatObj.number - (maxCols + 1) / 2) * colSpacing;
-    const z = ri * rowSpacing + 2;
-    const y = ri * seatY + 1.3;
-    camPos = [x, y, z + 0.4];
-    camLook = [x, y, z + 10]; // Look forward slightly, allowing manual rotation
+    const z = startZ + ri * rowSpacing;
+    const y = ri * seatY;
+    camPos = [x, y + 1.25, z - 0.2]; // Eye level, slightly forward from the backrest
+    
+    // To allow first-person "look around" (turning head), target must be very close to camera
+    // We look towards the screen (-Z direction)
+    const lookDir = new THREE.Vector3(0 - x, (sH / 2 + 2) - (y + 1.25), screenZ - (z - 0.2)).normalize();
+    camLook = [
+      camPos[0] + lookDir.x * 0.1,
+      camPos[1] + lookDir.y * 0.1,
+      camPos[2] + lookDir.z * 0.1
+    ];
     camFov = 65;
   }
 
-  const screenZ = totalDepth + 5;
   const wallHalf = maxCols * colSpacing / 2 + 3;
 
   return (
@@ -159,93 +182,90 @@ function CinemaScene({ seatLayout, bookedSeats, selectedSeats, lockedSeats, user
       <spotLight position={[0, 14, totalDepth * 0.3]} intensity={0.4} angle={0.8} penumbra={1} color="#ffffff" />
       <spotLight position={[0, 14, totalDepth * 0.7]} intensity={0.4} angle={0.8} penumbra={1} color="#ffffff" />
 
-      {/* Screen (at far end, facing -Z toward seats) */}
+      {/* Screen (at far end, facing +Z toward seats) */}
       <mesh position={[0, sH / 2 + 2.5, screenZ]}>
-        <planeGeometry args={[sW, sH]} />
-        <meshStandardMaterial color="#ffffff" emissive="#eeeeff" emissiveIntensity={0.6} side={THREE.DoubleSide} />
+        <planeGeometry args={[sW * 1.2, sH * 1.2]} />
+        <meshStandardMaterial color="#ffffff" emissive="#bbccff" emissiveIntensity={0.8} side={THREE.DoubleSide} />
       </mesh>
+
       {/* Screen bezel */}
-      <mesh position={[0, sH / 2 + 2.5, screenZ + 0.06]}>
-        <planeGeometry args={[sW + 0.6, sH + 0.6]} />
+      <mesh position={[0, sH / 2 + 2.5, screenZ - 0.06]}>
+        <planeGeometry args={[sW * 1.2 + 0.6, sH * 1.2 + 0.6]} />
         <meshStandardMaterial color="#333333" side={THREE.DoubleSide} />
       </mesh>
       {/* Screen surround trim */}
-      <mesh position={[0, sH / 2 + 2.5, screenZ + 0.08]}>
-        <planeGeometry args={[sW + 0.8, sH + 0.8]} />
+      <mesh position={[0, sH / 2 + 2.5, screenZ - 0.08]}>
+        <planeGeometry args={[sW * 1.2 + 0.8, sH * 1.2 + 0.8]} />
         <meshStandardMaterial color="#eeeeee" side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Floor — light carpet */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.3, totalDepth / 2]} receiveShadow>
-        <planeGeometry args={[50, 50]} />
+      {/* Floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.4, roomZCenter]} receiveShadow>
+        <planeGeometry args={[50, roomDepth]} />
         <meshStandardMaterial color="#e5e5e5" roughness={0.9} />
       </mesh>
 
-      {/* Ceiling — light panels */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 16, totalDepth / 2]}>
-        <planeGeometry args={[50, 50]} />
-        <meshStandardMaterial color="#fafafa" roughness={0.9} />
+      {/* Ceiling */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 16, roomZCenter]}>
+        <planeGeometry args={[50, roomDepth]} />
+        <meshStandardMaterial color="#fafafa" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Side walls with paneling */}
+      {/* Side walls */}
       {[-1, 1].map(side => (
-        <React.Fragment key={side}>
-          <mesh position={[side * wallHalf, 8, totalDepth / 2]} rotation={[0, -side * Math.PI / 2, 0]}>
-            <planeGeometry args={[50, 20]} />
-            <meshStandardMaterial color="#f0f0f0" roughness={0.8} />
-          </mesh>
-          {/* Wall accent strip */}
-          <mesh position={[side * (wallHalf - 0.01), 1, totalDepth / 2]} rotation={[0, -side * Math.PI / 2, 0]}>
-            <planeGeometry args={[50, 0.06]} />
-            <meshStandardMaterial color="#f5c518" emissive="#f5c518" emissiveIntensity={0.2} />
-          </mesh>
-        </React.Fragment>
+        <mesh key={side} position={[side * wallHalf, 8, roomZCenter]} rotation={[0, -side * Math.PI / 2, 0]}>
+          <planeGeometry args={[roomDepth, 20]} />
+          <meshStandardMaterial color="#f0f0f0" roughness={0.8} side={THREE.DoubleSide} />
+        </mesh>
       ))}
 
-      {/* Back wall (behind the seats and camera) */}
-      <mesh position={[0, 8, -8]}>
+      {/* Back wall (behind the seats) */}
+      <mesh position={[0, 8, totalDepth + 6]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[50, 20]} />
-        <meshStandardMaterial color="#eaeaea" roughness={0.9} />
+        <meshStandardMaterial color="#eaeaea" roughness={0.9} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Screen Wall (behind the screen) */}
+      <mesh position={[0, 8, -2]}>
+        <planeGeometry args={[50, 20]} />
+        <meshStandardMaterial color="#222" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Exit signs */}
       {[-1, 1].map(side => (
-        <mesh key={`exit${side}`} position={[side * (wallHalf - 0.5), 3.5, 0.5]} rotation={[0, -side * Math.PI / 2, 0]}>
+        <mesh key={`exit${side}`} position={[side * (wallHalf - 0.5), 3.5, 2]} rotation={[0, -side * Math.PI / 2, 0]}>
           <planeGeometry args={[0.8, 0.25]} />
           <meshStandardMaterial color="#00cc00" emissive="#00ff00" emissiveIntensity={0.5} />
         </mesh>
       ))}
 
-      {/* Aisle step lights */}
-      {rowLetters.map((_, i) => (
-        <React.Fragment key={i}>
-          <pointLight position={[-(wallHalf - 1.5), 0.05, i * rowSpacing + 2]} intensity={0.06} color="#f5c518" distance={2} />
-          <pointLight position={[(wallHalf - 1.5), 0.05, i * rowSpacing + 2]} intensity={0.06} color="#f5c518" distance={2} />
+      {/* Aisle step lights and risers */}
+      {rowLetters.map((_, ri) => (
+        <React.Fragment key={`row${ri}`}>
+          <pointLight position={[-(wallHalf - 1.5), ri * seatY + 0.05, startZ + ri * rowSpacing]} intensity={0.06} color="#f5c518" distance={2} />
+          <pointLight position={[(wallHalf - 1.5), ri * seatY + 0.05, startZ + ri * rowSpacing]} intensity={0.06} color="#f5c518" distance={2} />
           {/* Step light mesh */}
-          <mesh position={[-(wallHalf - 1.5), 0.02, i * rowSpacing + 2]}>
+          <mesh position={[-(wallHalf - 1.5), ri * seatY + 0.02, startZ + ri * rowSpacing]}>
             <boxGeometry args={[0.2, 0.02, 0.08]} />
             <meshStandardMaterial emissive="#f5c518" emissiveIntensity={0.6} color="#332200" />
           </mesh>
-          <mesh position={[(wallHalf - 1.5), 0.02, i * rowSpacing + 2]}>
+          <mesh position={[(wallHalf - 1.5), ri * seatY + 0.02, startZ + ri * rowSpacing]}>
             <boxGeometry args={[0.2, 0.02, 0.08]} />
             <meshStandardMaterial emissive="#f5c518" emissiveIntensity={0.6} color="#332200" />
+          </mesh>
+          {/* Stepped floor riser */}
+          <mesh position={[0, ri * seatY - 0.22, startZ + ri * rowSpacing]}>
+            <boxGeometry args={[maxCols * colSpacing + 4, 0.44, rowSpacing + 0.1]} />
+            <meshStandardMaterial color="#e5e5e5" roughness={0.95} />
           </mesh>
         </React.Fragment>
       ))}
 
-      {/* Stepped floor risers for stadium seating */}
-      {rowLetters.map((_, ri) => (
-        <mesh key={`riser${ri}`} position={[0, ri * seatY - 0.25, ri * rowSpacing + 2]}>
-          <boxGeometry args={[maxCols * colSpacing + 2, 0.06, rowSpacing * 0.9]} />
-          <meshStandardMaterial color="#d5d5d5" roughness={0.95} />
-        </mesh>
-      ))}
-
-      {/* 3D Seats — facing toward screen (+Z) */}
+      {/* 3D Seats — facing toward screen (-Z) */}
       {seatLayout.map((seat: any) => {
         const ri = rowLetters.indexOf(seat.row);
         const x = (seat.number - (maxCols + 1) / 2) * colSpacing;
-        const z = ri * rowSpacing + 2;
+        const z = startZ + ri * rowSpacing;
         const y = ri * seatY;
         const { color, emissive } = getSeatColor(seat);
         const isBooked = bookedSeats.includes(seat._id);
@@ -259,7 +279,14 @@ function CinemaScene({ seatLayout, bookedSeats, selectedSeats, lockedSeats, user
         );
       })}
 
-      <OrbitControls ref={controlsRef} enablePan={false} maxPolarAngle={Math.PI * 0.48} minDistance={viewMode === 'pov' ? 0.01 : 3} maxDistance={40} />
+      <OrbitControls 
+        ref={controlsRef} 
+        enablePan={false} 
+        enableZoom={viewMode !== 'pov'}
+        maxPolarAngle={Math.PI * 0.55} 
+        minDistance={viewMode === 'pov' ? 0.001 : 3} 
+        maxDistance={totalDepth + 15} 
+      />
     </>
   );
 }
