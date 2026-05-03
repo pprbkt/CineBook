@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: cinebook-mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - cinebook
+
+  redis:
+    image: redis:7-alpine
+    container_name: cinebook-redis
+    ports:
+      - '6379:6379'
+    networks:
+      - cinebook
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cinebook-backend
+    ports:
+      - '5000:5000'
+    env_file:
+      - .env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/cinebook
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - cinebook
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cinebook-frontend
+    ports:
+      - '5173:80'
+    depends_on:
+      - backend
+    networks:
+      - cinebook
+
+volumes:
+  mongo_data:
+
+networks:
+  cinebook:
+    driver: bridge
