@@ -2,7 +2,7 @@
 
 Real-time movie ticket booking and seat reservation system, extended to events — concerts, sports, theatre. Live seat locking, smart seat recommendations, 3D auditorium preview.
 
-> Built by Abhilasha A, Akash J, Darshan IC & Dhanush HS — Dept. of CSE (AI/ML), Vidyavardhaka College of Engineering
+> Built by Abhilash A, Akash J, Darshan IC & Dhanush HS — Dept. of CSE (AI/ML), Vidyavardhaka College of Engineering
 
 ## ▌Overview
 
