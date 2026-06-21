@@ -1,111 +1,93 @@
-# 🎬 CineBook
+# CineBook
 
-**A Real-Time Online Movie Ticket Booking and Seat Reservation System (Extended to Events)**
+Real-time movie ticket booking and seat reservation system, extended to events — concerts, sports, theatre. Live seat locking, smart seat recommendations, 3D auditorium preview.
 
-> Built by **Abhilasha A, Akash J, Darshan IC & Dhanush HS** — Dept. of CSE AI/ML, Vidyavardhaka College of Engineering
+> Built by Abhilasha A, Akash J, Darshan IC & Dhanush HS — Dept. of CSE (AI/ML), Vidyavardhaka College of Engineering
 
----
+## ▌Overview
 
-## ✨ Features
+A 3-tier booking platform with real-time seat selection (locked across all connected clients via Socket.io), AI-assisted seat and event recommendations, 3D seat previews, digital tickets with QR codes, and a full admin panel — all containerized for one-command deployment.
 
-- 🎭 **Multi-Event Support** — Movies, Concerts, Sports, Theatre
-- 🪑 **Real-Time Seat Selection** — Visual interactive seat map with live locking via Socket.io + Redis
-- 🧠 **Smart Seat Recommendations** — AI-powered suggestions based on viewing angle, preferences, and history
-- 🎯 **Personalized Event Recommendations** — Hybrid content-based + collaborative filtering
-- 🌐 **3D Seat Preview** — React Three Fiber auditorium preview from any selected seat
-- ⭐ **Reviews & Ratings** — Verified user reviews with aggregate ratings
-- 🔐 **Secure Auth** — JWT + HttpOnly cookies + bcrypt + Zod validation
-- 💳 **Payment Ready** — Razorpay integration (test mode)
-- 🎟️ **Digital Tickets** — PDF with QR code generation
-- 📧 **Email Notifications** — Booking confirmations via Nodemailer
-- 🛡️ **Admin Panel** — Manage events, showtimes, bookings, venues
-- 📱 **Responsive Design** — Mobile-first dark cinema theme
-- 🐳 **Docker Support** — One-command deployment
-
----
-
-## 🏗️ Architecture
+## ▌Architecture
 
 ```
-3-Tier Architecture
-├── Presentation Layer  →  React 19 + TypeScript + Vite + Tailwind CSS
-├── Application Layer   →  Node.js + Express.js + Socket.io + Redis
-└── Data Layer          →  MongoDB + Mongoose
+Presentation   React 19 + TypeScript + Vite + Tailwind CSS
+Application    Node.js + Express + Socket.io + Redis
+Data           MongoDB + Mongoose
 ```
 
----
+## ▌Tech Stack
 
-## 🛠️ Tech Stack
+```
+Frontend    React 19 • TypeScript • Vite • Tailwind CSS v4 • TanStack Query • Zustand • Framer Motion • React Three Fiber
+Backend     Node.js • Express • TypeScript • Socket.io • JWT • Zod
+Database    MongoDB • Mongoose
+Real-time   Socket.io + Redis (in-memory fallback)
+3D          Three.js via @react-three/fiber, @react-three/drei
+Tickets     pdf-lib • qrcode
+Email       Nodemailer
+DevOps      Docker • Docker Compose
+```
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query, Zustand, Framer Motion, React Three Fiber |
-| Backend | Node.js, Express.js, TypeScript, Socket.io, JWT, Zod |
-| Database | MongoDB + Mongoose |
-| Real-time | Socket.io + Redis (with in-memory fallback) |
-| 3D View | Three.js via @react-three/fiber + @react-three/drei |
-| Tickets | pdf-lib + qrcode |
-| Email | Nodemailer |
-| DevOps | Docker + Docker Compose |
+## ▌Features
 
----
+- Multi-event support — movies, concerts, sports, theatre
+- Real-time seat selection with live locking across clients
+- Smart seat recommendations based on viewing angle, preferences, history
+- Personalized event recommendations — hybrid content-based + collaborative filtering
+- 3D seat preview — view the auditorium from any selected seat
+- Reviews and ratings, tied to verified bookings
+- JWT auth with HttpOnly cookies, bcrypt, Zod validation
+- Razorpay integration (test mode)
+- PDF tickets with QR codes
+- Email confirmations via Nodemailer
+- Admin panel for events, showtimes, bookings, venues
+- Docker Compose for one-command deployment
 
-## 📁 Project Structure
+## ▌Project Structure
 
 ```
 cinebook/
 ├── backend/
 │   ├── src/
-│   │   ├── config/          # DB, Redis, env config
-│   │   ├── controllers/     # Route handlers
-│   │   ├── middleware/       # Auth, validation, errors
-│   │   ├── models/          # Mongoose schemas
-│   │   ├── routes/          # API routes
-│   │   ├── services/        # Business logic (recommendations, tickets, email)
-│   │   ├── socket/          # Socket.io handlers
-│   │   ├── utils/           # Logger, validators, errors
-│   │   ├── seed.ts          # Database seed script
-│   │   └── server.ts        # Entry point
+│   │   ├── config/          DB, Redis, env config
+│   │   ├── controllers/     Route handlers
+│   │   ├── middleware/      Auth, validation, errors
+│   │   ├── models/          Mongoose schemas
+│   │   ├── routes/          API routes
+│   │   ├── services/        Recommendations, tickets, email
+│   │   ├── socket/          Socket.io handlers
+│   │   ├── utils/           Logger, validators, errors
+│   │   ├── seed.ts          Database seed script
+│   │   └── server.ts        Entry point
 │   ├── Dockerfile
-│   ├── package.json
-│   └── tsconfig.json
+│   └── package.json
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   ├── pages/           # Route pages
-│   │   ├── stores/          # Zustand state stores
-│   │   ├── lib/             # API client, Socket client
-│   │   ├── hooks/           # Custom hooks
-│   │   ├── App.tsx          # Root component with routing
-│   │   ├── main.tsx         # Entry point
-│   │   └── index.css        # Global styles + Tailwind
+│   │   ├── components/      Reusable UI components
+│   │   ├── pages/           Route pages
+│   │   ├── stores/          Zustand state
+│   │   ├── lib/             API + socket clients
+│   │   ├── hooks/           Custom hooks
+│   │   ├── App.tsx
+│   │   └── main.tsx
 │   ├── Dockerfile
-│   ├── nginx.conf
-│   ├── package.json
-│   └── vite.config.ts
+│   └── package.json
 ├── docker-compose.yml
-├── .env.example
-└── README.md
+└── .env.example
 ```
 
----
+## ▌Setup
 
-## 🚀 Local Setup
-
-### Prerequisites
-- Node.js 18+
-- MongoDB (local or Atlas)
-- Redis (optional — falls back to in-memory)
-
-### 1. Clone & Install
+**Prerequisites:** Node.js 18+, MongoDB (local or Atlas), Redis (optional — falls back to in-memory)
 
 ```bash
-git clone https://github.com/your-repo/cinebook.git
-cd cinebook
+git clone https://github.com/pprbkt/CineBook.git
+cd CineBook
 
 # Backend
 cd backend
-cp ../.env.example .env   # Edit .env with your values
+cp ../.env.example .env   # fill in your values
 npm install
 
 # Frontend
@@ -113,69 +95,59 @@ cd ../frontend
 npm install
 ```
 
-### 2. Start MongoDB
+Start MongoDB:
 
 ```bash
-# If using local MongoDB:
 mongod
-
-# Or use Docker:
+# or
 docker run -d -p 27017:27017 --name cinebook-mongo mongo:7
 ```
 
-### 3. Seed Database
+Seed the database:
 
 ```bash
 cd backend
 npm run seed
 ```
 
-### 4. Start Development Servers
+Run dev servers:
 
 ```bash
-# Terminal 1 - Backend
-cd backend
-npm run dev
+# Terminal 1
+cd backend && npm run dev
 
-# Terminal 2 - Frontend
-cd frontend
-npm run dev
+# Terminal 2
+cd frontend && npm run dev
 ```
 
-### 5. Open App
+Open `http://localhost:5173`.
 
-Visit **http://localhost:5173**
+**Demo credentials**
 
-**Demo Credentials:**
-- Admin: `admin@cinebook.app` / `password123`
-- User: `dhanush@test.com` / `password123`
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@cinebook.app` | `password123` |
+| User | `dhanush@test.com` | `password123` |
 
----
-
-## 🐳 Docker Deployment
+## ▌Docker
 
 ```bash
-# One-command deployment
 docker-compose up --build
-
-# Seed data
 docker exec cinebook-backend npm run seed
 ```
 
----
-
-## 📡 API Endpoints
+## ▌API
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+|---|---|---|
 | POST | `/api/auth/register` | Register user |
 | POST | `/api/auth/login` | Login |
-| GET | `/api/auth/me` | Get current user |
-| GET | `/api/events` | List events (with filters) |
+| GET | `/api/auth/me` | Current user |
+| GET | `/api/events` | List events (filterable) |
 | GET | `/api/events/featured` | Featured events |
 | GET | `/api/events/recommendations` | Personalized recommendations |
 | GET | `/api/events/:id` | Event details + showtimes |
-| GET | `/api/showtimes/:id` | Showtime with seat availability |
+| GET | `/api/showtimes/:id` | Showtime + seat availability |
 | GET | `/api/showtimes/:id/seat-recommendations` | Smart seat suggestions |
 | POST | `/api/bookings` | Create booking |
 | POST | `/api/bookings/:id/confirm` | Confirm payment |
@@ -185,12 +157,10 @@ docker exec cinebook-backend npm run seed
 | POST | `/api/reviews` | Submit review |
 | GET | `/api/reviews/event/:id` | Event reviews |
 
----
-
-## 🔌 Socket.io Events
+## ▌Socket Events
 
 | Event | Direction | Description |
-|-------|-----------|-------------|
+|---|---|---|
 | `showtime:join` | Client → Server | Join showtime room |
 | `seat:lock` | Client → Server | Lock a seat |
 | `seat:unlock` | Client → Server | Release a seat |
@@ -198,39 +168,24 @@ docker exec cinebook-backend npm run seed
 | `seat:unlocked` | Server → All | Broadcast seat released |
 | `seats:booked` | Server → All | Broadcast seats confirmed |
 
----
+## ▌Data Models
 
-## 📊 Database Models
+- **User** — auth, profile, role
+- **Event** — movies, concerts, sports, theatre + metadata
+- **Venue** — theatre/hall with 3D seat layout
+- **Showtime** — event + venue + datetime + booked seats
+- **Booking** — user + showtime + seats + payment + QR code
+- **Review** — ratings, verified-booking flag
+- **UserPreference** — behavioral data for recommendations
 
-- **User** — Auth, profile, role (user/admin)
-- **Event** — Movies, concerts, sports, theatre with metadata
-- **Venue** — Theatre/hall with 3D seat layout
-- **Showtime** — Event + venue + datetime + booked seats
-- **Booking** — User + showtime + seats + payment + QR code
-- **Review** — Ratings with verified booking flag
-- **UserPreference** — Behavioral data for recommendations
+## ▌Deployment
 
----
-
-## 🏗️ Deployment
-
-### Vercel (Frontend)
-```bash
-cd frontend
-npx vercel --prod
+```
+Frontend    Vercel    npx vercel --prod
+Backend     Render / Railway   build: npm run build · start: npm start
+Database    MongoDB Atlas — set MONGODB_URI in .env
 ```
 
-### Render / Railway (Backend)
-- Set environment variables
-- Build command: `npm run build`
-- Start command: `npm start`
+## ▌License
 
-### MongoDB Atlas
-- Create free cluster at [mongodb.com/atlas](https://mongodb.com/atlas)
-- Update `MONGODB_URI` in `.env`
-
----
-
-## 📝 License
-
-MIT License — Built for academic purposes at VVCE.
+MIT — built for academic purposes at VVCE.
